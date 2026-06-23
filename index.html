@@ -613,22 +613,36 @@
     const btn = document.getElementById('btn-analyze')
     btn.disabled = true; btn.textContent = '🤖 Menganalisis...'
     try {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: 'image/jpeg', data: photoB64 } },
-              { text: 'What food is in this image? Reply with ONLY a JSON object, no markdown, no explanation: {"name":"food name in Indonesian","calories":400,"protein":15,"carbs":50,"fat":12}' }
-            ]
-          }]
+      let resp, attempts = 0
+      while (attempts < 3) {
+        resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            generationConfig: {
+              maxOutputTokens: 100,
+              temperature: 0.1,
+            },
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: 'image/jpeg', data: photoB64 } },
+                { text: 'What food is in this image? Reply with ONLY a JSON object, no markdown, no explanation: {"name":"food name in Indonesian","calories":400,"protein":15,"carbs":50,"fat":12}' }
+              ]
+            }]
+          })
         })
-      })
+        if (resp.status !== 503) break
+        attempts++
+        await new Promise(r => setTimeout(r, 2000))
+      }
+      if (!resp.ok) throw new Error(`Gemini error: ${resp.status}`)
       const data = await resp.json()
+      console.log('Gemini raw response:', JSON.stringify(data))
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      const clean = text.replace(/```json|```/g,'').trim()
-      aiResult = JSON.parse(clean)
+      console.log('Gemini text:', text)
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Format respons AI tidak valid')
+      aiResult = JSON.parse(jsonMatch[0])
       showAIResult()
     } catch(err) {
       showToast('❌ Gagal analisis: ' + err.message)
