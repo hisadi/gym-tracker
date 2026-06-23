@@ -107,6 +107,7 @@
     .bubble.type-leg .bubble-date, .bubble.type-cardio .bubble-date { color: rgba(45,38,64,0.6); }
     .bubble.selected.type-push, .bubble.selected.type-pull,
     .bubble.selected.type-leg, .bubble.selected.type-cardio { transform: scale(1.12); }
+    .bubble.type-arm     { background: linear-gradient(135deg, #ffc0a0, #ff8c5a); box-shadow: 0 3px 10px rgba(255,140,90,0.35); }
 
     /* LEGEND */
     .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
@@ -123,7 +124,7 @@
     .session-date-sub { font-size: 0.72rem; color: var(--text2); font-weight: 600; margin-top: 2px; }
 
     /* TYPE PICKER */
-    .type-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+    .type-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
     .type-btn {
       aspect-ratio: 1; border-radius: 50%; border: none; cursor: pointer; font-size: 1rem;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -136,6 +137,7 @@
     .type-btn.t-pull   { background: linear-gradient(135deg, #a8d8f8, #6db8f7); }
     .type-btn.t-leg    { background: linear-gradient(135deg, #a8eab8, #7fd99a); }
     .type-btn.t-cardio { background: linear-gradient(135deg, #f9a8c8, #f47fb0); }
+    .type-btn.t-arm    { background: linear-gradient(135deg, #ffc0a0, #ff8c5a); }
     .type-btn.t-rest   { background: linear-gradient(135deg, #e8e4f4, #d4ceea); }
 
     /* EXERCISE LIST */
@@ -298,17 +300,19 @@
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'gym' } })
 
   const TYPES = {
-    push:   { label: 'Push',     icon: '🟡', emoji: '💪' },
-    pull:   { label: 'Pull',     icon: '🔵', emoji: '🔙' },
-    leg:    { label: 'Leg',      icon: '🟢', emoji: '🦵' },
-    cardio: { label: 'Cardio',   icon: '🔴', emoji: '🏃' },
-    rest:   { label: 'Istirahat',icon: '⚪', emoji: '😴' },
-  }
+      push:   { label: 'Push',     icon: '🟡', emoji: '💪' },
+      pull:   { label: 'Pull',     icon: '🔵', emoji: '🔙' },
+      leg:    { label: 'Leg',      icon: '🟢', emoji: '🦵' },
+      arm:    { label: 'Arm',      icon: '🟠', emoji: '💪' },
+      cardio: { label: 'Cardio',   icon: '🔴', emoji: '🏃' },
+      rest:   { label: 'Istirahat',icon: '⚪', emoji: '😴' },
+    }
 
   const PRESETS = {
     push:   ['Bench Press', 'Incline Bench', 'Decline Bench', 'Cable Fly', 'Push Up', 'Dumbbell Fly', 'Overhead Press', 'Lateral Raise', 'Chest Dip'],
-    pull:   ['Pull Up', 'Lat Pulldown', 'Seated Row', 'Bent Over Row', 'Deadlift', 'Face Pull', 'T-Bar Row', 'Barbell Curl', 'Hammer Curl'],
+    pull:   ['Pull Up', 'Lat Pulldown', 'Seated Row', 'Bent Over Row', 'Deadlift', 'Face Pull', 'T-Bar Row'],
     leg:    ['Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Extension', 'Leg Curl', 'Calf Raise', 'Hack Squat', 'Bulgarian Split Squat'],
+    arm:    ['Barbell Curl', 'Hammer Curl', 'Preacher Curl', 'Cable Curl', 'Tricep Pushdown', 'Skull Crusher', 'Overhead Tricep Ext', 'Dips', 'Close Grip Bench'],
     cardio: ['Treadmill', 'Elliptical', 'Cycling', 'Jump Rope', 'Rowing Machine', 'Stair Climber', 'HIIT'],
     rest:   [],
   }
