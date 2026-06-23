@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gym Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f0edf8;
+      --surface: #ffffff;
+      --border: #e8e3f0;
+      --text: #2d2640;
+      --text2: #8b7fa8;
+      --text3: #c4b8d8;
+      --font: 'Nunito', sans-serif;
+      --radius: 20px;
+
+      /* Bubble colors per type */
+      --push:    #ffb347;
+      --push-bg: #fff3e0;
+      --pull:    #6db8f7;
+      --pull-bg: #e3f2fd;
+      --leg:     #7fd99a;
+      --leg-bg:  #e8f5e9;
+      --cardio:  #f47fb0;
+      --cardio-bg: #fce4ec;
+      --rest:    #e0dcea;
+      --rest-bg: #f5f3fa;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px 48px; }
+
+    .container { max-width: 500px; margin: 0 auto; }
+
+    /* HEADER */
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .header-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: linear-gradient(135deg, var(--push), var(--cardio));
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+      box-shadow: 0 4px 12px rgba(255,100,100,0.25);
+    }
+    .header-title { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.03em; color: var(--text); }
+    .header-sub { font-size: 0.78rem; color: var(--text2); font-weight: 600; margin-top: 1px; }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border-radius: 16px; padding: 14px 12px;
+      box-shadow: 0 2px 12px rgba(100,80,160,0.07);
+    }
+    .stat-label { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+    .stat-value { font-size: 1.5rem; font-weight: 900; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
+    .stat-unit { font-size: 0.7rem; font-weight: 700; color: var(--text2); }
+
+    /* CALENDAR CARD */
+    .cal-card {
+      background: var(--surface); border-radius: 24px; padding: 20px;
+      box-shadow: 0 4px 20px rgba(100,80,160,0.08); margin-bottom: 20px;
+    }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .cal-month-title { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; }
+    .cal-controls { display: flex; align-items: center; gap: 8px; }
+    .btn-today {
+      font-family: var(--font); font-size: 0.72rem; font-weight: 800; color: var(--text2);
+      background: var(--bg); border: none; border-radius: 999px; padding: 5px 12px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-today:hover { background: var(--border); }
+    .cal-nav-btn {
+      width: 28px; height: 28px; border-radius: 50%; background: var(--bg); border: none;
+      color: var(--text2); font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; transition: all 0.15s;
+    }
+    .cal-nav-btn:hover { background: var(--border); color: var(--text); }
+
+    .cal-days-header { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
+    .cal-day-label { text-align: center; font-size: 0.68rem; font-weight: 800; color: var(--text3); text-transform: uppercase; padding: 4px 0; }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+    /* BUBBLE DAY */
+    .bubble {
+      aspect-ratio: 1; border-radius: 50%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s; position: relative;
+      background: var(--rest); font-weight: 800;
+    }
+    .bubble:hover { transform: scale(1.08); }
+    .bubble.other-month { opacity: 0.25; cursor: default; }
+    .bubble.other-month:hover { transform: none; }
+    .bubble.today { box-shadow: 0 0 0 2.5px var(--text), 0 0 0 4.5px var(--bg); }
+    .bubble.selected { box-shadow: 0 0 0 2.5px var(--text), 0 0 0 4.5px var(--bg), 0 6px 16px rgba(100,80,160,0.2); transform: scale(1.1); }
+
+    .bubble-date { font-size: 0.6rem; font-weight: 800; color: rgba(45,38,64,0.5); position: absolute; top: 6px; left: 8px; line-height: 1; }
+    .bubble-icon { font-size: 0.85rem; line-height: 1; }
+    .bubble-type { font-size: 0.48rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(45,38,64,0.55); margin-top: 1px; }
+
+    /* bubble type colors */
+    .bubble.type-push    { background: linear-gradient(135deg, #ffd18a, #ffb347); box-shadow: 0 3px 10px rgba(255,179,71,0.35); }
+    .bubble.type-pull    { background: linear-gradient(135deg, #a8d8f8, #6db8f7); box-shadow: 0 3px 10px rgba(109,184,247,0.35); }
+    .bubble.type-leg     { background: linear-gradient(135deg, #a8eab8, #7fd99a); box-shadow: 0 3px 10px rgba(127,217,154,0.35); }
+    .bubble.type-cardio  { background: linear-gradient(135deg, #f9a8c8, #f47fb0); box-shadow: 0 3px 10px rgba(244,127,176,0.35); }
+    .bubble.type-rest    { background: linear-gradient(135deg, #e8e4f4, #d4ceea); }
+    .bubble.type-push .bubble-date, .bubble.type-pull .bubble-date,
+    .bubble.type-leg .bubble-date, .bubble.type-cardio .bubble-date { color: rgba(45,38,64,0.6); }
+    .bubble.selected.type-push, .bubble.selected.type-pull,
+    .bubble.selected.type-leg, .bubble.selected.type-cardio { transform: scale(1.12); }
+
+    /* LEGEND */
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700; color: var(--text2); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* SESSION PANEL */
+    .session-panel {
+      background: var(--surface); border-radius: 24px; padding: 20px;
+      box-shadow: 0 4px 20px rgba(100,80,160,0.08);
+    }
+    .session-panel-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
+    .session-date { font-size: 1rem; font-weight: 900; }
+    .session-date-sub { font-size: 0.72rem; color: var(--text2); font-weight: 600; margin-top: 2px; }
+
+    /* TYPE PICKER */
+    .type-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+    .type-btn {
+      aspect-ratio: 1; border-radius: 50%; border: none; cursor: pointer; font-size: 1rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      transition: transform 0.15s; font-family: var(--font); background: var(--bg);
+    }
+    .type-btn:hover { transform: scale(1.08); }
+    .type-btn.sel { transform: scale(1.1); box-shadow: 0 0 0 2.5px var(--text), 0 0 0 4.5px var(--bg); }
+    .type-btn-label { font-size: 0.5rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(45,38,64,0.6); }
+    .type-btn.t-push   { background: linear-gradient(135deg, #ffd18a, #ffb347); }
+    .type-btn.t-pull   { background: linear-gradient(135deg, #a8d8f8, #6db8f7); }
+    .type-btn.t-leg    { background: linear-gradient(135deg, #a8eab8, #7fd99a); }
+    .type-btn.t-cardio { background: linear-gradient(135deg, #f9a8c8, #f47fb0); }
+    .type-btn.t-rest   { background: linear-gradient(135deg, #e8e4f4, #d4ceea); }
+
+    /* EXERCISE LIST */
+    .exercise-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .exercise-card {
+      background: var(--bg); border-radius: 14px; padding: 12px 14px;
+      border: 1.5px solid var(--border);
+    }
+    .exercise-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .exercise-name-row { display: flex; align-items: center; gap: 8px; }
+    .exercise-name { font-size: 0.85rem; font-weight: 800; }
+    .btn-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.9rem; padding: 2px 4px; border-radius: 6px; transition: color 0.15s; }
+    .btn-del:hover { color: #ef4444; }
+
+    .sets-list { display: flex; flex-direction: column; gap: 5px; }
+    .set-row { display: flex; align-items: center; gap: 6px; }
+    .set-num { font-size: 0.65rem; font-weight: 800; color: var(--text3); width: 18px; }
+    .set-input {
+      background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 5px 8px; font-family: var(--font); font-size: 0.8rem; font-weight: 700;
+      color: var(--text); width: 54px; outline: none; transition: border-color 0.15s; text-align: center;
+    }
+    .set-input:focus { border-color: var(--text2); }
+    .set-sep { font-size: 0.7rem; color: var(--text3); font-weight: 800; }
+    .btn-del-set { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.75rem; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+    .btn-del-set:hover { color: #ef4444; }
+    .btn-add-set {
+      margin-top: 6px; background: none; border: 1.5px dashed var(--border); border-radius: 8px;
+      color: var(--text3); font-family: var(--font); font-size: 0.75rem; font-weight: 800;
+      padding: 5px 10px; cursor: pointer; transition: all 0.15s; width: 100%;
+    }
+    .btn-add-set:hover { border-color: var(--text2); color: var(--text2); }
+
+    /* ADD EXERCISE BTN */
+    .btn-add-exercise {
+      width: 100%; padding: 12px; background: var(--bg); border: 1.5px dashed var(--border);
+      border-radius: 14px; font-family: var(--font); font-size: 0.82rem; font-weight: 800;
+      color: var(--text2); cursor: pointer; transition: all 0.15s; margin-bottom: 12px;
+    }
+    .btn-add-exercise:hover { border-color: var(--text2); color: var(--text); }
+
+    /* SAVE BTN */
+    .btn-save {
+      width: 100%; padding: 14px; background: var(--text); color: var(--bg);
+      border: none; border-radius: 14px; font-family: var(--font); font-size: 0.9rem;
+      font-weight: 900; cursor: pointer; transition: opacity 0.15s; letter-spacing: -0.01em;
+    }
+    .btn-save:hover { opacity: 0.85; }
+    .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 2rem 1rem; color: var(--text3); }
+    .empty .eicon { font-size: 2rem; margin-bottom: 8px; display: block; }
+    .empty p { font-size: 0.8rem; font-weight: 700; line-height: 1.6; }
+
+    /* PICKER MODAL */
+    .picker-overlay {
+      position: fixed; inset: 0; background: rgba(45,38,64,0.4); display: flex;
+      align-items: flex-end; justify-content: center; z-index: 500; padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .picker-sheet {
+      background: var(--surface); border-radius: 24px 24px 16px 16px; padding: 20px;
+      width: 100%; max-width: 500px; max-height: 70vh; overflow-y: auto;
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .picker-title { font-size: 1rem; font-weight: 900; margin-bottom: 14px; }
+    .picker-list { display: flex; flex-direction: column; gap: 6px; }
+    .picker-item {
+      padding: 11px 14px; background: var(--bg); border-radius: 12px; border: none;
+      text-align: left; font-family: var(--font); font-size: 0.85rem; font-weight: 700;
+      color: var(--text); cursor: pointer; transition: all 0.12s;
+    }
+    .picker-item:hover { background: var(--border); }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--text); color: var(--bg); font-family: var(--font); font-weight: 800;
+      font-size: 0.85rem; padding: 10px 22px; border-radius: 999px;
+      transition: transform 0.25s; z-index: 999; white-space: nowrap; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">🏋️</div>
+    <div>
+      <div class="header-title">Gym Tracker</div>
+      <div class="header-sub">Ketuk gelembung untuk catat latihan</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">🔥 Streak</div>
+      <div class="stat-value" id="stat-streak">0 <span class="stat-unit">hari</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💪 Latihan</div>
+      <div class="stat-value" id="stat-sessions">0 <span class="stat-unit">sesi</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">📦 Exercise</div>
+      <div class="stat-value" id="stat-exercises">0 <span class="stat-unit">total</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">🏆 Sets</div>
+      <div class="stat-value" id="stat-sets">0 <span class="stat-unit">set</span></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="cal-card">
+    <div class="cal-header">
+      <div class="cal-month-title" id="cal-month"></div>
+      <div class="cal-controls">
+        <button class="btn-today" onclick="goToday()">Hari ini</button>
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-days-header">
+      <div class="cal-day-label">Sen</div>
+      <div class="cal-day-label">Sel</div>
+      <div class="cal-day-label">Rab</div>
+      <div class="cal-day-label">Kam</div>
+      <div class="cal-day-label">Jum</div>
+      <div class="cal-day-label">Sab</div>
+      <div class="cal-day-label">Min</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#ffb347"></div> Push</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#6db8f7"></div> Pull</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7fd99a"></div> Leg</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f47fb0"></div> Cardio</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d4ceea"></div> Istirahat</div>
+    </div>
+  </div>
+
+  <!-- SESSION PANEL -->
+  <div class="session-panel" id="session-panel">
+    <div class="empty"><span class="eicon">📅</span><p>Ketuk gelembung tanggal<br>untuk mulai catat latihan.</p></div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+  const SUPABASE_URL = 'https://pvqbjqjjwwcmzajldlzo.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cWJqcWpqd3djbXphamxkbHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNjk1NzksImV4cCI6MjA5NjY0NTU3OX0.3IeD44BUsjvlvRQU6lcfWysT5nyZxq9eZCNEZ2HN-WA'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'gym' } })
+
+  const TYPES = {
+    push:   { label: 'Push',     icon: '🟡', emoji: '💪' },
+    pull:   { label: 'Pull',     icon: '🔵', emoji: '🔙' },
+    leg:    { label: 'Leg',      icon: '🟢', emoji: '🦵' },
+    cardio: { label: 'Cardio',   icon: '🔴', emoji: '🏃' },
+    rest:   { label: 'Istirahat',icon: '⚪', emoji: '😴' },
+  }
+
+  const PRESETS = {
+    push:   ['Bench Press', 'Incline Bench', 'Decline Bench', 'Cable Fly', 'Push Up', 'Dumbbell Fly', 'Overhead Press', 'Lateral Raise', 'Chest Dip'],
+    pull:   ['Pull Up', 'Lat Pulldown', 'Seated Row', 'Bent Over Row', 'Deadlift', 'Face Pull', 'T-Bar Row', 'Barbell Curl', 'Hammer Curl'],
+    leg:    ['Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Extension', 'Leg Curl', 'Calf Raise', 'Hack Squat', 'Bulgarian Split Squat'],
+    cardio: ['Treadmill', 'Elliptical', 'Cycling', 'Jump Rope', 'Rowing Machine', 'Stair Climber', 'HIIT'],
+    rest:   [],
+  }
+
+  const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
+  const today = new Date()
+  let calYear = today.getFullYear()
+  let calMonth = today.getMonth()
+  let selectedDate = null
+  let sessionsMap = {}   // 'YYYY-MM-DD' → { id, type, exercises[] }
+  let currentSession = { type: null, exercises: [] }
+  let loadedSessionId = null
+
+  function toDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+  const todayStr = toDateStr(today)
+
+  function formatDisplay(ds) {
+    const d = new Date(ds + 'T00:00:00')
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  // ─── LOAD DATA ────────────────────────────────────────────────────────────
+  async function loadAll() {
+    const { data: sessions } = await supabase.from('sessions').select('*, exercises(*)')
+    sessionsMap = {}
+    let totalEx = 0, totalSets = 0
+    ;(sessions || []).forEach(s => {
+      const exs = (s.exercises || []).map(e => ({ ...e, sets: e.sets || [] }))
+      sessionsMap[s.date] = { id: s.id, type: s.type, exercises: exs }
+      totalEx += exs.length
+      exs.forEach(e => { totalSets += e.sets.length })
+    })
+    // Stats
+    document.getElementById('stat-sessions').innerHTML = `${Object.keys(sessionsMap).filter(d => sessionsMap[d].type !== 'rest').length} <span class="stat-unit">sesi</span>`
+    document.getElementById('stat-exercises').innerHTML = `${totalEx} <span class="stat-unit">total</span>`
+    document.getElementById('stat-sets').innerHTML = `${totalSets} <span class="stat-unit">set</span>`
+    // Streak
+    let streak = 0, cur = new Date(today)
+    while (true) {
+      const ds = toDateStr(cur)
+      if (!sessionsMap[ds]) break
+      streak++
+      cur.setDate(cur.getDate() - 1)
+    }
+    document.getElementById('stat-streak').innerHTML = `${streak} <span class="stat-unit">hari</span>`
+    renderCalendar()
+  }
+
+  // ─── CALENDAR ─────────────────────────────────────────────────────────────
+  function renderCalendar() {
+    document.getElementById('cal-month').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`
+    const grid = document.getElementById('cal-grid')
+    grid.innerHTML = ''
+
+    const first = new Date(calYear, calMonth, 1)
+    // Monday-first: 0=Mon .. 6=Sun
+    let startOffset = (first.getDay() + 6) % 7
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+    const daysInPrev  = new Date(calYear, calMonth, 0).getDate()
+
+    // Prev month padding
+    for (let i = startOffset - 1; i >= 0; i--) {
+      grid.appendChild(makeBubble(daysInPrev - i, null, true))
+    }
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+      const session = sessionsMap[ds]
+      const isToday = ds === todayStr
+      const isSel = ds === selectedDate
+      grid.appendChild(makeBubble(d, ds, false, session?.type, isToday, isSel))
+    }
+    // Next month padding
+    const total = startOffset + daysInMonth
+    const rem = total % 7 === 0 ? 0 : 7 - (total % 7)
+    for (let d = 1; d <= rem; d++) {
+      grid.appendChild(makeBubble(d, null, true))
+    }
+  }
+
+  function makeBubble(day, dateStr, otherMonth, type, isToday, isSelected) {
+    const div = document.createElement('div')
+    const cls = ['bubble']
+    if (otherMonth) cls.push('other-month')
+    if (type) cls.push(`type-${type}`)
+    if (isToday) cls.push('today')
+    if (isSelected) cls.push('selected')
+    div.className = cls.join(' ')
+
+    if (!otherMonth) {
+      const t = TYPES[type]
+      div.innerHTML = `
+        <span class="bubble-date">${day}</span>
+        ${type ? `<span class="bubble-icon">${t.emoji}</span><span class="bubble-type">${t.label}</span>` : `<span style="font-size:0.75rem;font-weight:800;color:rgba(45,38,64,0.2)">${day}</span>`}
+      `
+      if (type) div.querySelector('.bubble-date').style.color = 'rgba(45,38,64,0.5)'
+      div.addEventListener('click', () => selectDate(dateStr))
+    }
+    return div
+  }
+
+  window.changeMonth = (dir) => {
+    calMonth += dir
+    if (calMonth > 11) { calMonth = 0; calYear++ }
+    if (calMonth < 0)  { calMonth = 11; calYear-- }
+    renderCalendar()
+  }
+  window.goToday = () => {
+    calYear = today.getFullYear(); calMonth = today.getMonth()
+    renderCalendar()
+    selectDate(todayStr)
+  }
+
+  // ─── SELECT DATE ──────────────────────────────────────────────────────────
+  async function selectDate(ds) {
+    selectedDate = ds
+    renderCalendar()
+    const existing = sessionsMap[ds]
+    if (existing) {
+      loadedSessionId = existing.id
+      currentSession = { type: existing.type, exercises: JSON.parse(JSON.stringify(existing.exercises)) }
+    } else {
+      loadedSessionId = null
+      currentSession = { type: null, exercises: [] }
+    }
+    renderSessionPanel()
+  }
+
+  // ─── SESSION PANEL ────────────────────────────────────────────────────────
+  function renderSessionPanel() {
+    const panel = document.getElementById('session-panel')
+    const ds = selectedDate
+    if (!ds) { panel.innerHTML = `<div class="empty"><span class="eicon">📅</span><p>Ketuk tanggal untuk catat.</p></div>`; return }
+
+    const isRest = currentSession.type === 'rest'
+
+    panel.innerHTML = `
+      <div class="session-panel-header">
+        <div>
+          <div class="session-date">${formatDisplay(ds)}</div>
+          <div class="session-date-sub">${currentSession.type ? `Tipe: ${TYPES[currentSession.type].label}` : 'Pilih tipe latihan'}</div>
+        </div>
+      </div>
+
+      <div class="type-picker">
+        ${Object.entries(TYPES).map(([key, t]) => `
+          <button class="type-btn t-${key} ${currentSession.type === key ? 'sel' : ''}" onclick="setType('${key}')">
+            <span>${t.emoji}</span>
+            <span class="type-btn-label">${t.label}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      ${!isRest && currentSession.type ? `
+        <div class="exercise-list" id="exercise-list">
+          ${currentSession.exercises.length === 0
+            ? `<div class="empty"><span class="eicon">💪</span><p>Belum ada exercise.<br>Tambah di bawah.</p></div>`
+            : currentSession.exercises.map((ex, ei) => renderExCard(ex, ei)).join('')}
+        </div>
+        <button class="btn-add-exercise" onclick="openPicker()">+ Tambah Exercise</button>
+      ` : ''}
+
+      ${currentSession.type ? `<button class="btn-save" onclick="saveSession()">💾 Simpan Sesi</button>` : ''}
+    `
+  }
+
+  function renderExCard(ex, ei) {
+    return `
+      <div class="exercise-card">
+        <div class="exercise-card-top">
+          <div class="exercise-name-row">
+            <div class="exercise-name">${ex.exercise}</div>
+          </div>
+          <button class="btn-del" onclick="removeExercise(${ei})">✕</button>
+        </div>
+        <div class="sets-list" id="sets-${ei}">
+          ${ex.sets.map((s, si) => `
+            <div class="set-row">
+              <span class="set-num">${si+1}</span>
+              <input class="set-input" type="number" placeholder="reps" value="${s.reps||''}" min="1"
+                onchange="updateSet(${ei},${si},'reps',this.value)" />
+              <span class="set-sep">×</span>
+              <input class="set-input" type="number" placeholder="kg" value="${s.weight||''}" min="0" step="0.5"
+                onchange="updateSet(${ei},${si},'weight',this.value)" />
+              <span class="set-sep" style="font-size:0.65rem;color:var(--text3)">kg</span>
+              <button class="btn-del-set" onclick="removeSet(${ei},${si})">✕</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn-add-set" onclick="addSet(${ei})">+ Set</button>
+      </div>
+    `
+  }
+
+  // ─── ACTIONS ──────────────────────────────────────────────────────────────
+  window.setType = (type) => {
+    currentSession.type = type
+    if (type === 'rest') currentSession.exercises = []
+    renderSessionPanel()
+  }
+
+  window.openPicker = () => {
+    if (!currentSession.type || currentSession.type === 'rest') return
+    const exercises = PRESETS[currentSession.type] || []
+    const overlay = document.createElement('div')
+    overlay.className = 'picker-overlay'
+    overlay.innerHTML = `
+      <div class="picker-sheet">
+        <div class="picker-title">${TYPES[currentSession.type].emoji} ${TYPES[currentSession.type].label} — Pilih Exercise</div>
+        <div class="picker-list">
+          ${exercises.map(ex => `<button class="picker-item" onclick="addExercise('${ex}')">${ex}</button>`).join('')}
+        </div>
+      </div>
+    `
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove() })
+    document.body.appendChild(overlay)
+  }
+
+  window.addExercise = (exercise) => {
+    document.querySelector('.picker-overlay')?.remove()
+    currentSession.exercises.push({ exercise, sets: [{ reps: '', weight: '' }] })
+    renderSessionPanel()
+  }
+
+  window.removeExercise = (ei) => {
+    currentSession.exercises.splice(ei, 1)
+    renderSessionPanel()
+  }
+
+  window.addSet = (ei) => {
+    currentSession.exercises[ei].sets.push({ reps: '', weight: '' })
+    renderSessionPanel()
+  }
+
+  window.removeSet = (ei, si) => {
+    if (currentSession.exercises[ei].sets.length <= 1) return
+    currentSession.exercises[ei].sets.splice(si, 1)
+    renderSessionPanel()
+  }
+
+  window.updateSet = (ei, si, field, val) => {
+    currentSession.exercises[ei].sets[si][field] = val ? Number(val) : ''
+  }
+
+  // ─── SAVE ─────────────────────────────────────────────────────────────────
+  window.saveSession = async () => {
+    if (!selectedDate || !currentSession.type) return
+    const btn = document.querySelector('.btn-save')
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...' }
+
+    try {
+      let sessionId = loadedSessionId
+      if (!sessionId) {
+        const { data, error } = await supabase.from('sessions').insert({ date: selectedDate, type: currentSession.type }).select().single()
+        if (error) throw error
+        sessionId = data.id
+        loadedSessionId = sessionId
+      } else {
+        await supabase.from('sessions').update({ type: currentSession.type }).eq('id', sessionId)
+      }
+
+      await supabase.from('exercises').delete().eq('session_id', sessionId)
+      if (currentSession.exercises.length > 0) {
+        const rows = currentSession.exercises.map(ex => ({ session_id: sessionId, muscle: currentSession.type, exercise: ex.exercise, sets: ex.sets }))
+        const { error } = await supabase.from('exercises').insert(rows)
+        if (error) throw error
+      }
+
+      await loadAll()
+      selectDate(selectedDate)
+      showToast('✅ Sesi disimpan!')
+    } catch (err) {
+      showToast('❌ ' + err.message)
+    }
+  }
+
+  // ─── TOAST ────────────────────────────────────────────────────────────────
+  let toastTimer
+  function showToast(msg) {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.style.transform = 'translateX(-50%) translateY(0)'
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(80px)' }, 2500)
+  }
+
+  // ─── INIT ─────────────────────────────────────────────────────────────────
+  await loadAll()
+  selectDate(todayStr)
+</script>
+</body>
+</html>
