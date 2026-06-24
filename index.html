@@ -629,12 +629,12 @@
           'Authorization': `Bearer ${await getORKey()}`,
         },
         body: JSON.stringify({
-          model: 'nvidia/nemotron-nano-12b-v2-vl:free',
+          model: 'google/gemini-2.5-flash-image',
           messages: [{
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${photoB64}` } },
-              { type: 'text', text: 'Identify the food in this image. Estimate realistic nutritional values based on what you see. Reply with ONLY a valid JSON object, no markdown, no extra text. Example format: {"name":"Nasi Goreng","calories":450,"protein":15,"carbs":60,"fat":12}' }
+              { type: 'text', text: 'You are a nutritionist. Look at this food image carefully and identify the most specific food name possible. Use Indonesian food names when applicable. Estimate calories and macros for the visible portion size. Be consistent and accurate. Reply with ONLY a valid JSON object, no markdown: {"name":"nama makanan spesifik","calories":500,"protein":40,"carbs":10,"fat":30}' }
             ]
           }]
         })
