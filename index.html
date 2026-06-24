@@ -300,8 +300,15 @@
   const SUPABASE_URL = 'https://pvqbjqjjwwcmzajldlzo.supabase.co'
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cWJqcWpqd3djbXphamxkbHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNjk1NzksImV4cCI6MjA5NjY0NTU3OX0.3IeD44BUsjvlvRQU6lcfWysT5nyZxq9eZCNEZ2HN-WA'
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'gym' } })
-  function getORKey() {
-    return localStorage.getItem('or_key') || ''
+
+  // tambah di bawah ini:
+  const supabaseApiKeys = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'apikeys' } })
+  let cachedORKey = null
+  async function getORKey() {
+    if (cachedORKey) return cachedORKey
+    const { data } = await supabaseApiKeys.from('keys').select('value').eq('name', 'openrouter').single()
+    cachedORKey = data?.value || ''
+    return cachedORKey
   }
 
   const TYPES = {
@@ -619,7 +626,7 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getORKey()}`,
+          'Authorization': `Bearer ${await getORKey()}`,
         },
         body: JSON.stringify({
           model: 'nvidia/nemotron-nano-12b-v2-vl:free',
@@ -627,7 +634,7 @@
             role: 'user',
             content: [
               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${photoB64}` } },
-              { type: 'text', text: 'What food is in this image? Reply with ONLY a JSON object, no markdown, no explanation: {"name":"food name in Indonesian","calories":400,"protein":15,"carbs":50,"fat":12}' }
+              { type: 'text', text: 'Identify the food in this image. Estimate realistic nutritional values based on what you see. Reply with ONLY a valid JSON object, no markdown, no extra text. Example format: {"name":"Nasi Goreng","calories":450,"protein":15,"carbs":60,"fat":12}' }
             ]
           }]
         })
@@ -640,6 +647,11 @@
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Format respons AI tidak valid')
       aiResult = JSON.parse(jsonMatch[0])
+      // Bulatkan semua nilai ke integer
+      aiResult.calories = Math.round(aiResult.calories || 0)
+      aiResult.protein = Math.round(aiResult.protein || 0)
+      aiResult.carbs = Math.round(aiResult.carbs || 0)
+      aiResult.fat = Math.round(aiResult.fat || 0)
       showAIResult()
     } catch(err) {
       showToast('❌ Gagal analisis: ' + err.message)
